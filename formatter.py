@@ -4,91 +4,82 @@ KST = timezone(timedelta(hours=9))
 
 
 def build_dashboard(diag: dict) -> str:
-    now = datetime.now(KST).strftime("%Y-%m-%d %H:%M KST")
+    now = datetime.now(KST).strftime("%m/%d %H:%M")
     ind = diag["indicators"]
-    lines = [f"\U0001f4ca \uc2dc\uc7a5 \uac74\uac15\uac80\uc9c4 ({now})", ""]
+    lines = [f"\U0001f4ca \uc2dc\uc7a5\uac74\uac15\uac80\uc9c4 ({now})", ""]
 
-    lines.append("\u25a0 \uc9c0\uae08 \ube44\uc2fc\uac00?")
-    if "cape" in ind:
-        i = ind["cape"]
-        lines.append(f"  CAPE  {i['fmt']}  {i['emoji']} {i['desc']}")
-    if "ecy" in ind:
-        i = ind["ecy"]
-        lines.append(f"  ECY  {i['fmt']}  {i['emoji']} {i['desc']}")
-    if "buffett" in ind:
-        i = ind["buffett"]
-        lines.append(f"  Buffett  {i['fmt']}  {i['emoji']} {i['desc']}")
+    lines.append("\u25a0 \uac00\uaca9")
+    for key in ("cape", "ecy", "buffett"):
+        if key in ind:
+            i = ind[key]
+            name = {"cape": "CAPE", "ecy": "ECY", "buffett": "Buffett"}[key]
+            lines.append(f"{name} {i['fmt']} {i['emoji']}{i['desc']}")
 
     lines.append("")
-    lines.append("\u25a0 \uacbd\uae30\uce68\uccb4 \uc624\ub098?")
+    lines.append("\u25a0 \uacbd\uae30")
     if "yield_curve" in ind:
         i = ind["yield_curve"]
-        lines.append(f"  Yield Curve  {i['fmt']}  {i['emoji']} {i['desc']}")
+        lines.append(f"Yield Curve {i['fmt']} {i['emoji']}{i['desc']}")
     if "rate_10y" in ind:
-        i = ind["rate_10y"]
-        lines.append(f"  10Y \uae08\ub9ac  {i['fmt']}")
+        lines.append(f"10Y {ind['rate_10y']['fmt']}")
 
     lines.append("")
-    lines.append("\u25a0 \uc0ac\ub78c\ub4e4 \uc2ec\ub9ac")
+    lines.append("\u25a0 \uc2ec\ub9ac")
     if "vix" in ind:
         i = ind["vix"]
-        lines.append(f"  VIX  {i['fmt']}  {i['emoji']} {i['desc']}")
+        lines.append(f"VIX {i['fmt']} {i['emoji']}{i['desc']}")
     if "cnn_fg" in ind:
         i = ind["cnn_fg"]
-        lines.append(f"  F&G(\uc8fc\uc2dd)  {i['fmt']}  {i['emoji']} {i['desc']}")
+        lines.append(f"F&G\uc8fc\uc2dd {i['fmt']} {i['emoji']}{i['desc']}")
     if "crypto_fg" in ind:
         i = ind["crypto_fg"]
-        lines.append(f"  F&G(\ucf54\uc778)  {i['fmt']}  {i['emoji']} {i['desc']}")
+        lines.append(f"F&G\ucf54\uc778 {i['fmt']} {i['emoji']}{i['desc']}")
 
     marks = diag.get("marks")
     if marks:
         lines.append("")
-        lines.append(f"\u25a0 \U0001f321\ufe0f 막스 시장온도: {marks['temp']}/100 {marks['emoji']} {marks['level']}")
-        lines.append(f"  {marks['bar']}")
-        comp_parts = [f"{k} {v:.0f}" for k, v in marks["components"].items()]
-        lines.append(f"  구성: {' | '.join(comp_parts)}")
-        lines.append(f"  \U0001f4ac \"{marks['advice']}\"")
+        lines.append(f"\U0001f321\ufe0f \ub9c9\uc2a4\uc628\ub3c4 {marks['temp']}/100 {marks['emoji']}{marks['level']}")
+        lines.append(marks["bar"])
+        comp = " | ".join(f"{k}{v:.0f}" for k, v in marks["components"].items())
+        lines.append(comp)
+        lines.append(f"\U0001f4ac {marks['advice']}")
 
     lines.append("")
-    lines.append("\u25a0 \uc885\ud569 \uc9c4\ub2e8")
-    lines.append("")
-
+    lines.append("\u25a0 \uc9c4\ub2e8")
     v = diag["valuation_label"]
     s = diag["sentiment_label"]
-    lines.append(f"\U0001f4cd \ud604\uc7ac \uc0c1\ud0dc: {v} + {s}")
-    lines.append(f"\u27a1\ufe0f  {diag['matrix_emoji']} {diag['matrix_label']}")
+    lines.append(f"{v} + {s}")
+    lines.append(f"\u27a1\ufe0f {diag['matrix_emoji']}{diag['matrix_label']}")
     lines.append("")
 
-    lines.append(f"\U0001f4a1 \uc774 \uc870\ud569\uc774 \uc758\ubbf8\ud558\ub294 \uac83")
     for detail_line in diag["matrix_detail"].split("\n"):
-        lines.append(f"  {detail_line}")
+        lines.append(detail_line)
 
     lines.append("")
-    matrix_lines = _draw_matrix(diag["valuation"], diag["sentiment"])
-    lines.extend(matrix_lines)
+    lines.extend(_draw_compass(diag["valuation"], diag["sentiment"]))
 
     lines.append("")
-    lines.append("\U0001f50d /guide \ub85c \uac01 \uc9c0\ud45c \ud574\uc11d\ubc95 \ud655\uc778")
+    lines.append("/guide \uc9c0\ud45c\ud574\uc11d\ubc95")
 
     return "\n".join(lines)
 
 
 _COMBOS = [
-    ("expensive", "fear",    "\U0001f4b8+\U0001f628", "혼조 \u00b7 분할매수"),
-    ("expensive", "neutral", "\U0001f4b8+\U0001f610", "고점주의"),
-    ("expensive", "greed",   "\U0001f4b8+\U0001f911", "\U0001f6a8 도망쳐"),
-    ("normal",    "fear",    "\U0001f610+\U0001f628", "기회탐색"),
-    ("normal",    "neutral", "\U0001f610+\U0001f610", "평온 \u00b7 유지"),
-    ("normal",    "greed",   "\U0001f610+\U0001f911", "욕심자제"),
-    ("cheap",     "fear",    "\U0001f7e2+\U0001f628", "\U0001f3af 인생매수"),
-    ("cheap",     "neutral", "\U0001f7e2+\U0001f610", "적극매수"),
-    ("cheap",     "greed",   "\U0001f7e2+\U0001f911", "회복초기"),
+    ("expensive", "fear",    "\U0001f4b8\U0001f628", "\ud63c\uc870\u00b7\ubd84\ud560\ub9e4\uc218"),
+    ("expensive", "neutral", "\U0001f4b8\U0001f610", "\uace0\uc810\uc8fc\uc758"),
+    ("expensive", "greed",   "\U0001f4b8\U0001f911", "\U0001f6a8\ub3c4\ub9dd\uccd0"),
+    ("normal",    "fear",    "\U0001f610\U0001f628", "\uae30\ud68c\ud0d0\uc0c9"),
+    ("normal",    "neutral", "\U0001f610\U0001f610", "\ud3c9\uc628"),
+    ("normal",    "greed",   "\U0001f610\U0001f911", "\uc695\uc2ec\uc790\uc81c"),
+    ("cheap",     "fear",    "\U0001f7e2\U0001f628", "\U0001f3af\uc778\uc0dd\ub9e4\uc218"),
+    ("cheap",     "neutral", "\U0001f7e2\U0001f610", "\uc801\uadf9\ub9e4\uc218"),
+    ("cheap",     "greed",   "\U0001f7e2\U0001f911", "\ud68c\ubcf5\ucd08\uae30"),
 ]
 
 
-def _draw_matrix(val: str, sent: str) -> list[str]:
-    lines = ["\u25a0 \uc2dc\uc7a5 \ub098\uce68\ubc18 (\uac00\uaca9+\uc2ec\ub9ac \uc870\ud569\ud45c)"]
+def _draw_compass(val: str, sent: str) -> list[str]:
+    lines = ["\u25a0 \ub098\uce68\ubc18"]
     for v, s, icons, label in _COMBOS:
-        marker = " \u2190 \u2605\uc9c0\uae08 \uc5ec\uae30" if v == val and s == sent else ""
-        lines.append(f"  {icons} {label}{marker}")
+        marker = " \u2190\u2605" if v == val and s == sent else ""
+        lines.append(f"{icons} {label}{marker}")
     return lines

@@ -36,45 +36,41 @@ def interpret_fg_crypto(v: int) -> tuple[int, str, str]:
 
 
 MATRIX = {
-    ("expensive", "fear"):    ("혼조 \u00b7 분할매수", "\U0001f7e1",
-        "\u201c비싼데 겁도 먹고 있다\u201d = 혼조 구간\n"
-        "\u2022 비싸서 올인은 위험하지만\n"
-        "\u2022 공포가 높아서 단기 바닥은 가까울 수 있음\n"
-        "\u2022 역사적으로 이런 조합에서는 \u2018조금씩 분할매수\u2019가 최선"),
-    ("expensive", "neutral"): ("고점 주의", "\U0001f7e0",
-        "\u201c비싼데 아무도 안 무서워한다\u201d = 위험 구간\n"
-        "\u2022 시장이 자만 중 \u2014 작은 충격에도 급락 가능\n"
-        "\u2022 신규 진입은 최소화, 현금\u00b7채권 비중 유지\n"
-        "\u2022 VIX 35+ 올 때까지 기다리는 게 유리"),
-    ("expensive", "greed"):   ("\U0001f6a8 도망쳐", "\U0001f534",
-        "\u201c비싸고 다들 탐욕에 빠져있다\u201d = 가장 위험\n"
-        "\u2022 역사적 고점 근처에서 흔히 보이는 조합\n"
-        "\u2022 레버리지\u00b7추격매수 절대 금지\n"
-        "\u2022 현금 확보 + 리스크 축소가 급선무"),
-    ("normal", "fear"):       ("기회 탐색", "\U0001f7e2",
-        "\u201c적당한 가격에 공포\u201d = 기회가 다가오는 중\n"
-        "\u2022 분할매수 시작해도 괜찮은 구간\n"
-        "\u2022 공포가 더 커지면 비중 확대 고려"),
-    ("normal", "neutral"):    ("평온 \u00b7 유지", "\U0001f7e2",
-        "\u201c적당한 가격, 적당한 심리\u201d = 평온\n"
-        "\u2022 기존 포트폴리오 유지\n"
-        "\u2022 특별히 사거나 팔 이유 없음"),
-    ("normal", "greed"):      ("욕심 자제", "\U0001f7e1",
-        "\u201c가격은 괜찮지만 분위기가 과열\u201d\n"
-        "\u2022 추격매수 자제\n"
-        "\u2022 수익 일부 실현 고려"),
-    ("cheap", "fear"):        ("\U0001f3af 인생 매수", "\U0001f7e2",
-        "\u201c싸고 다들 겁먹었다\u201d = 역사적 최고 매수 타이밍\n"
-        "\u2022 2009, 2020.3 같은 구간\n"
-        "\u2022 용기 내서 적극 매수할 때\n"
-        "\u2022 이때 산 사람이 부자가 됨"),
-    ("cheap", "neutral"):     ("적극 매수", "\U0001f7e2",
-        "\u201c싸고 분위기도 안정\u201d = 좋은 진입점\n"
-        "\u2022 장기 투자 시작하기 좋은 때"),
-    ("cheap", "greed"):       ("회복 초기", "\U0001f7e1",
-        "\u201c싸지만 분위기는 회복 중\u201d\n"
-        "\u2022 이미 반등이 시작된 구간\n"
-        "\u2022 기존 포지션 유지, 추격은 자제"),
+    ("expensive", "fear"): ("\ud63c\uc870\u00b7\ubd84\ud560\ub9e4\uc218", "\U0001f7e1",
+        "\ube44\uc2f8\uc9c0\ub9cc \uacb8\ub3c4 \ub0ac\ub2e4 = \ud63c\uc870\n"
+        "\u2022 \uc62c\uc778 \uc704\ud5d8, \ubd84\ud560\ub9e4\uc218\uac00 \ucd5c\uc120\n"
+        "\u2022 \uacf5\ud3ec \ub354 \ucee4\uc9c0\uba74 \ube44\uc911 \ud655\ub300"),
+    ("expensive", "neutral"): ("\uace0\uc810\uc8fc\uc758", "\U0001f7e0",
+        "\ube44\uc2f4\ub370 \uc544\ubb34\ub3c4 \uc548 \ubb34\uc11c\uc6cc\ud568 = \uc704\ud5d8\n"
+        "\u2022 \uc2dc\uc7a5 \uc790\ub9cc \uc911, \uae09\ub77d \uac00\ub2a5\n"
+        "\u2022 \uc2e0\uaddc\uc9c4\uc785 \ucd5c\uc18c\ud654\n"
+        "\u2022 VIX 35+ \uc62c \ub54c\uae4c\uc9c0 \ub300\uae30"),
+    ("expensive", "greed"): ("\U0001f6a8\ub3c4\ub9dd\uccd0", "\U0001f534",
+        "\ube44\uc2f8\uace0 \ud0d0\uc695 = \uac00\uc7a5 \uc704\ud5d8\n"
+        "\u2022 \ub808\ubc84\ub9ac\uc9c0\u00b7\ucd94\uaca9\ub9e4\uc218 \uae08\uc9c0\n"
+        "\u2022 \ud604\uae08\ud655\ubcf4 + \ub9ac\uc2a4\ud06c \ucd95\uc18c"),
+    ("normal", "fear"): ("\uae30\ud68c\ud0d0\uc0c9", "\U0001f7e2",
+        "\uc801\ub2f9\ud55c \uac00\uaca9\uc5d0 \uacf5\ud3ec = \uae30\ud68c\n"
+        "\u2022 \ubd84\ud560\ub9e4\uc218 \uc2dc\uc791 OK\n"
+        "\u2022 \uacf5\ud3ec \ucee4\uc9c0\uba74 \ube44\uc911 \ud655\ub300"),
+    ("normal", "neutral"): ("\ud3c9\uc628\u00b7\uc720\uc9c0", "\U0001f7e2",
+        "\uc801\ub2f9\ud55c \uac00\uaca9, \uc801\ub2f9\ud55c \uc2ec\ub9ac\n"
+        "\u2022 \uae30\uc874 \ud3ec\ud2b8\ud3f4\ub9ac\uc624 \uc720\uc9c0\n"
+        "\u2022 \ud2b9\ubcc4\ud788 \uc0ac\uac70\ub098 \ud314 \uc774\uc720 \uc5c6\uc74c"),
+    ("normal", "greed"): ("\uc695\uc2ec\uc790\uc81c", "\U0001f7e1",
+        "\uac00\uaca9\uc740 OK\uc778\ub370 \ubd84\uc704\uae30 \uacfc\uc5f4\n"
+        "\u2022 \ucd94\uaca9\ub9e4\uc218 \uc790\uc81c\n"
+        "\u2022 \uc218\uc775 \uc77c\ubd80 \uc2e4\ud604 \uace0\ub824"),
+    ("cheap", "fear"): ("\U0001f3af\uc778\uc0dd\ub9e4\uc218", "\U0001f7e2",
+        "\uc2f8\uace0 \uacb8\uba39\uc74c = \ucd5c\uace0 \ud0c0\uc774\ubc0d\n"
+        "\u2022 2009, 2020.3 \uac19\uc740 \uad6c\uac04\n"
+        "\u2022 \uc6a9\uae30\ub0b4\uc11c \uc801\uadf9 \ub9e4\uc218"),
+    ("cheap", "neutral"): ("\uc801\uadf9\ub9e4\uc218", "\U0001f7e2",
+        "\uc2f8\uace0 \uc548\uc815 = \uc88b\uc740 \uc9c4\uc785\uc810\n"
+        "\u2022 \uc7a5\uae30\ud22c\uc790 \uc2dc\uc791\ud558\uae30 \uc88b\uc740 \ub54c"),
+    ("cheap", "greed"): ("\ud68c\ubcf5\ucd08\uae30", "\U0001f7e1",
+        "\uc2f8\uc9c0\ub9cc \ud68c\ubcf5 \uc911\n"
+        "\u2022 \uae30\uc874 \ud3ec\uc9c0\uc158 \uc720\uc9c0, \ucd94\uaca9 \uc790\uc81c"),
 }
 
 
