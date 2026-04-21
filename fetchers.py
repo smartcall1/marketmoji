@@ -105,6 +105,24 @@ async def fetch_crypto_fg() -> tuple[int, str] | None:
         return None
 
 
+async def fetch_credit_spread() -> float | None:
+    r = await _get(
+        "https://fred.stlouisfed.org/graph/fredgraph.csv"
+        "?id=BAMLH0A0HYM2&cosd=2020-01-01"
+    )
+    if not r:
+        return None
+    try:
+        lines = r.text.strip().split("\n")
+        for line in reversed(lines):
+            parts = line.split(",")
+            if len(parts) == 2 and parts[1] not in (".", ""):
+                return float(parts[1])
+    except Exception:
+        pass
+    return None
+
+
 async def fetch_all() -> dict:
     import asyncio
 
@@ -116,6 +134,7 @@ async def fetch_all() -> dict:
     vix_t = asyncio.create_task(fetch_vix())
     cnn_fg_t = asyncio.create_task(fetch_cnn_fg())
     crypto_fg_t = asyncio.create_task(fetch_crypto_fg())
+    credit_t = asyncio.create_task(fetch_credit_spread())
 
     cape = await cape_t
     real_rate = await real_rate_t
@@ -125,6 +144,7 @@ async def fetch_all() -> dict:
     vix = await vix_t
     cnn_fg = await cnn_fg_t
     crypto_fg = await crypto_fg_t
+    credit_spread = await credit_t
 
     ecy = None
     if cape and real_rate and cape > 0:
@@ -145,4 +165,5 @@ async def fetch_all() -> dict:
         "vix": vix,
         "cnn_fg": cnn_fg,
         "crypto_fg": crypto_fg,
+        "credit_spread": credit_spread,
     }

@@ -40,6 +40,15 @@ def build_dashboard(diag: dict) -> str:
         i = ind["crypto_fg"]
         lines.append(f"  F&G(\ucf54\uc778)  {i['fmt']}  {i['emoji']} {i['desc']}")
 
+    marks = diag.get("marks")
+    if marks:
+        lines.append("")
+        lines.append(f"\u25a0 \U0001f321\ufe0f 막스 시장온도: {marks['temp']}/100 {marks['emoji']} {marks['level']}")
+        lines.append(f"  {marks['bar']}")
+        comp_parts = [f"{k} {v:.0f}" for k, v in marks["components"].items()]
+        lines.append(f"  구성: {' | '.join(comp_parts)}")
+        lines.append(f"  \U0001f4ac \"{marks['advice']}\"")
+
     lines.append("")
     lines.append("\u25a0 \uc885\ud569 \uc9c4\ub2e8")
     lines.append("")

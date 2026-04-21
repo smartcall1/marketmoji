@@ -150,6 +150,8 @@ def diagnose(data: dict) -> dict:
     matrix_key = (val_bucket, sent_bucket)
     matrix_label, matrix_emoji, matrix_detail = MATRIX.get(matrix_key, ("판단 불가", "\u2753", "데이터 부족"))
 
+    marks = calc_marks_temp(data)
+
     return {
         "indicators": indicators,
         "valuation": val_bucket,
@@ -159,4 +161,61 @@ def diagnose(data: dict) -> dict:
         "matrix_label": matrix_label,
         "matrix_emoji": matrix_emoji,
         "matrix_detail": matrix_detail,
+        "marks": marks,
+    }
+
+
+def _norm(value: float, cold: float, hot: float) -> float:
+    return max(0.0, min(100.0, (value - cold) / (hot - cold) * 100))
+
+
+MARKS_LEVELS = [
+    (20, "\u2744\ufe0f", "극단적 공포", "막스라면 \"지금 공격적으로 사라\""),
+    (40, "\U0001f7e2", "차가움", "좋은 기회가 보이는 구간"),
+    (60, "\U0001f7e1", "미지근", "평범, 선별적 투자"),
+    (80, "\U0001f7e0", "��거움", "조심! 리스크 줄여라"),
+    (100, "\U0001f534", "과열", "막스라면 \"방어 모드 전환\""),
+]
+
+
+def calc_marks_temp(data: dict) -> dict | None:
+    components = {}
+
+    if data.get("cape") is not None:
+        components["CAPE"] = _norm(data["cape"], 10, 45)
+
+    if data.get("vix") is not None:
+        components["VIX"] = _norm(data["vix"], 45, 10)
+
+    if data.get("cnn_fg") is not None:
+        score_val = data["cnn_fg"][0] if isinstance(data["cnn_fg"], tuple) else data["cnn_fg"]
+        components["F&G"] = float(score_val)
+
+    if data.get("credit_spread") is not None:
+        components["신용"] = _norm(data["credit_spread"], 10, 3)
+
+    if not components:
+        return None
+
+    temp = sum(components.values()) / len(components)
+    temp = round(temp)
+
+    emoji = "\U0001f534"
+    level = "과열"
+    advice = "막스라면 \"방어 모드 전환\""
+    for ceiling, e, lv, adv in MARKS_LEVELS:
+        if temp <= ceiling:
+            emoji, level, advice = e, lv, adv
+            break
+
+    bar_pos = max(0, min(20, round(temp / 5)))
+    bar = "\u2744\ufe0f " + "\u2501" * bar_pos + "\u25cf" + "\u2501" * (20 - bar_pos) + " \U0001f525"
+
+    return {
+        "temp": temp,
+        "emoji": emoji,
+        "level": level,
+        "advice": advice,
+        "bar": bar,
+        "components": components,
     }
