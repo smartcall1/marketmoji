@@ -64,34 +64,22 @@ def build_dashboard(diag: dict) -> str:
     return "\n".join(lines)
 
 
+_COMBOS = [
+    ("expensive", "fear",    "\U0001f4b8+\U0001f628", "혼조 \u00b7 분할매수"),
+    ("expensive", "neutral", "\U0001f4b8+\U0001f610", "고점주의"),
+    ("expensive", "greed",   "\U0001f4b8+\U0001f911", "\U0001f6a8 도망쳐"),
+    ("normal",    "fear",    "\U0001f610+\U0001f628", "기회탐색"),
+    ("normal",    "neutral", "\U0001f610+\U0001f610", "평온 \u00b7 유지"),
+    ("normal",    "greed",   "\U0001f610+\U0001f911", "욕심자제"),
+    ("cheap",     "fear",    "\U0001f7e2+\U0001f628", "\U0001f3af 인생매수"),
+    ("cheap",     "neutral", "\U0001f7e2+\U0001f610", "적극매수"),
+    ("cheap",     "greed",   "\U0001f7e2+\U0001f911", "회복초기"),
+]
+
+
 def _draw_matrix(val: str, sent: str) -> list[str]:
-    grid = {
-        ("expensive", "fear"):    "\ud63c\uc870",
-        ("expensive", "neutral"): "\uace0\uc810\uc8fc\uc758",
-        ("expensive", "greed"):   "\U0001f6a8\ub3c4\ub9dd",
-        ("normal",    "fear"):    "\uae30\ud68c\ud0d0\uc0c9",
-        ("normal",    "neutral"): "\ud3c9\uc628",
-        ("normal",    "greed"):   "\uc695\uc2ec\uc790\uc81c",
-        ("cheap",     "fear"):    "\U0001f3af\uc778\uc0dd\ub9e4\uc218",
-        ("cheap",     "neutral"): "\uc801\uadf9\ub9e4\uc218",
-        ("cheap",     "greed"):   "\ud68c\ubcf5\ucd08\uae30",
-    }
-    rows = ["expensive", "normal", "cheap"]
-    cols = ["fear", "neutral", "greed"]
-    row_labels = {"expensive": "\U0001f4b8비쌈", "normal": "\U0001f610보통", "cheap": "\U0001f7e2저렴"}
-    col_labels = {"fear": "\U0001f628\uacf5\ud3ec", "neutral": "\U0001f610\ubcf4\ud1b5", "greed": "\U0001f911\ud0d0\uc695"}
-
-    lines = ["\u25a0 \ud604\uc7ac \uc704\uce58 \ub9e4\ud2b8\ub9ad\uc2a4"]
-    lines.append(f"        {col_labels['fear']}  {col_labels['neutral']}  {col_labels['greed']}")
-
-    for r in rows:
-        cells = []
-        for c in cols:
-            cell = grid[(r, c)]
-            if r == val and c == sent:
-                cell = f"[{cell}]"
-            cells.append(cell)
-        line = f"  {row_labels[r]}  {'  '.join(cells)}"
-        lines.append(line)
-
+    lines = ["\u25a0 \uc2dc\uc7a5 \ub098\uce68\ubc18 (\uac00\uaca9+\uc2ec\ub9ac \uc870\ud569\ud45c)"]
+    for v, s, icons, label in _COMBOS:
+        marker = " \u2190 \u2605\uc9c0\uae08 \uc5ec\uae30" if v == val and s == sent else ""
+        lines.append(f"  {icons} {label}{marker}")
     return lines
