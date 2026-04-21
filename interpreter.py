@@ -41,7 +41,7 @@ MATRIX = {
         "\u2022 \uc62c\uc778 \uc704\ud5d8, \ubd84\ud560\ub9e4\uc218\uac00 \ucd5c\uc120\n"
         "\u2022 \uacf5\ud3ec \ub354 \ucee4\uc9c0\uba74 \ube44\uc911 \ud655\ub300"),
     ("expensive", "neutral"): ("\uace0\uc810\uc8fc\uc758", "\U0001f7e0",
-        "\ube44\uc2f4\ub370 \uc544\ubb34\ub3c4 \uc548 \ubb34\uc11c\uc6cc\ud568 = \uc704\ud5d8\n"
+        "\ube44\uc2fc\ub370 \uc544\ubb34\ub3c4 \uc548 \ubb34\uc11c\uc6cc\ud568 = \uc704\ud5d8\n"
         "\u2022 \uc2dc\uc7a5 \uc790\ub9cc \uc911, \uae09\ub77d \uac00\ub2a5\n"
         "\u2022 \uc2e0\uaddc\uc9c4\uc785 \ucd5c\uc18c\ud654\n"
         "\u2022 VIX 35+ \uc62c \ub54c\uae4c\uc9c0 \ub300\uae30"),
@@ -204,8 +204,8 @@ def calc_marks_temp(data: dict) -> dict | None:
             emoji, level, advice = e, lv, adv
             break
 
-    bar_pos = max(0, min(20, round(temp / 5)))
-    bar = "\u2744\ufe0f " + "\u2501" * bar_pos + "\u25cf" + "\u2501" * (20 - bar_pos) + " \U0001f525"
+    bar_pos = max(0, min(14, round(temp / 100 * 14)))
+    bar = "\u2744\ufe0f" + "\u2501" * bar_pos + "\u25cf" + "\u2501" * (14 - bar_pos) + "\U0001f525"
 
     return {
         "temp": temp,

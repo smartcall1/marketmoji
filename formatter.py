@@ -38,7 +38,7 @@ def build_dashboard(diag: dict) -> str:
     marks = diag.get("marks")
     if marks:
         lines.append("")
-        lines.append(f"\U0001f321\ufe0f \ub9c9\uc2a4\uc628\ub3c4 {marks['temp']}/100 {marks['emoji']}{marks['level']}")
+        lines.append(f"\U0001f321\ufe0f \ub9c9\uc2a4 {marks['temp']}/100 {marks['emoji']}{marks['level']}")
         lines.append(marks["bar"])
         comp = " | ".join(f"{k}{v:.0f}" for k, v in marks["components"].items())
         lines.append(comp)
