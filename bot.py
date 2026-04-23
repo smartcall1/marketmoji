@@ -114,7 +114,7 @@ def run_bot() -> None:
     job_queue = app.job_queue
     alert_time = time(hour=ALERT_HOUR_UTC, minute=ALERT_MINUTE, tzinfo=timezone.utc)
     job_queue.run_daily(daily_alert, time=alert_time, name="daily_dashboard")
-    logger.info(f"Daily alert scheduled at {alert_time} UTC (10:00 KST)")
+    logger.info(f"Daily alert scheduled at {alert_time} UTC (07:00 KST)")
 
     logger.info("Bot started. Polling...")
     app.run_polling(drop_pending_updates=True)
