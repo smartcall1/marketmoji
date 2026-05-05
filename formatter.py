@@ -6,7 +6,7 @@ KST = timezone(timedelta(hours=9))
 def build_dashboard(diag: dict) -> str:
     now = datetime.now(KST).strftime("%m/%d %H:%M")
     ind = diag["indicators"]
-    lines = [f"\U0001f4ca \uc2dc\uc7a5\uac74\uac15\uac80\uc9c4 ({now})", ""]
+    lines = [f"\U0001f4ca \uc2dc\uc7a5\uac74\uac15\uac80\uc9c4 \u2014 \ubbf8\uad6d \uac70\uc2dc\uacbd\uc81c/\uc8fc\uc2dd ({now})", ""]
 
     lines.append("\u25a0 \uac00\uaca9")
     for key in ("cape", "ecy", "buffett"):

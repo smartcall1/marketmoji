@@ -390,7 +390,7 @@ def _evaluate(values: dict) -> dict:
 
 def format_top_signal(data: dict) -> str:
     lines = []
-    lines.append(f"🔥 Top Signal ({data['timestamp']})")
+    lines.append(f"🔥 Top Signal — BTC 사이클 꼭대기 감지 ({data['timestamp']})")
     lines.append("")
     lines.append(f"■ 시그널: {data['hits']}/{data['total']}  {data['risk_emoji']}{data['risk_level']}")
     lines.append("")
