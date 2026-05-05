@@ -46,7 +46,7 @@ BUFFETT_THRESHOLDS = [
 YIELD_CURVE_THRESHOLDS = [
     (-999, 5, "\U0001f480", "\uce68\uccb4 \uacbd\uace0"),
     (0, 5, "\U0001f534", "\uce68\uccb4 \uacbd\uace0"),
-    (0.5, 4, "\U0001f7e1", "\ub458\ud654 \uc911"),
+    (0.5, 4, "\U0001f7e1", "\ub454\ud654 \uc911"),
     (1, 3, "\U0001f7e2", "\uad1c\ucc2e\uc74c"),
     (2, 2, "\U0001f7e2", "\uc88b\uc74c"),
     (999, 1, "\U0001f7e2", "\uac15\ud55c \ud655\uc7a5"),
