@@ -1,6 +1,12 @@
 """
 Top Signal — BTC 사이클 꼭대기 감지 12개 지표 종합.
 무료 공개 API만 사용, Termux/ARM 호환 (브라우저 불필요).
+
+데이터 소스:
+  - AskSurf API (MVRV, NUPL, Puell, Exchange Inflow) — 30크레딧/일 무료
+  - CoinGecko (가격 히스토리 → Pi Cycle, Mayer, Log Growth, Ahr999, Dominance)
+  - Binance (Perp Funding Rate)
+  - alternative.me (Fear & Greed)
 """
 
 import math
@@ -15,6 +21,8 @@ _UA = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 )
 _HEADERS = {"User-Agent": _UA}
+
+SURF_API = "https://api.asksurf.ai/gateway/v1/market/onchain-indicator"
 
 # ──────────────────────────────────────────────
 # 지표 정의: threshold 도달 시 HIT (사이클 탑 경고)
@@ -49,19 +57,62 @@ async def _get(url: str, headers: dict | None = None, params: dict | None = None
 
 
 # ──────────────────────────────────────────────
-# 개별 데이터 소스 fetcher
+# AskSurf API fetcher (MVRV, NUPL, Puell, Exchange Inflow)
+# 30크레딧/일 무료. 하루 1회 실행 시 4크레딧 소모.
 # ──────────────────────────────────────────────
 
-async def _fetch_coingecko_history(days: int = 365) -> list[float] | None:
-    """CoinGecko에서 BTC 일별 종가 리스트 (oldest→newest)."""
+async def _fetch_surf_metric(metric: str) -> float | None:
+    """AskSurf API에서 BTC on-chain 지표 최신값 조회."""
+    r = await _get(SURF_API, params={"symbol": "BTC", "metric": metric})
+    if not r:
+        return None
+    try:
+        data = r.json()
+        if isinstance(data, list) and data:
+            return float(data[-1]["value"])
+        if isinstance(data, dict) and "data" in data:
+            entries = data["data"]
+            if isinstance(entries, list) and entries:
+                return float(entries[-1]["value"])
+    except Exception:
+        pass
+    return None
+
+
+async def _fetch_surf_exchange_inflow() -> float | None:
+    """Exchange inflow ratio (today / 30d avg). Surf metric: exchange-flows/inflows."""
+    r = await _get(SURF_API, params={"symbol": "BTC", "metric": "exchange-flows/inflows"})
+    if not r:
+        return None
+    try:
+        data = r.json()
+        entries = data if isinstance(data, list) else data.get("data", [])
+        if not entries or len(entries) < 30:
+            return None
+        values = [float(e["value"]) for e in entries]
+        latest = values[-1]
+        avg_30d = sum(values[-30:]) / 30
+        if avg_30d > 0:
+            return latest / avg_30d
+    except Exception:
+        pass
+    return None
+
+
+# ──────────────────────────────────────────────
+# CoinGecko fetcher (가격 히스토리, 도미넌스)
+# ──────────────────────────────────────────────
+
+async def _fetch_coingecko_history() -> list[float] | None:
+    """CoinGecko BTC 일별 종가 365일 (oldest→newest)."""
     r = await _get(
         "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart",
-        params={"vs_currency": "usd", "days": str(days), "interval": "daily"},
+        params={"vs_currency": "usd", "days": "365", "interval": "daily"},
     )
     if not r:
         return None
     try:
-        prices = r.json()["prices"]  # [[timestamp_ms, price], ...]
+        prices = r.json()["prices"]
         return [p[1] for p in prices]
     except Exception:
         return None
@@ -76,6 +127,10 @@ async def _fetch_btc_dominance() -> float | None:
     except Exception:
         return None
 
+
+# ──────────────────────────────────────────────
+# 기타 무료 API
+# ──────────────────────────────────────────────
 
 async def _fetch_fear_greed() -> int | None:
     r = await _get("https://api.alternative.me/fng/?limit=1&format=json")
@@ -97,32 +152,17 @@ async def _fetch_funding_rate() -> float | None:
         return None
     try:
         rate = float(r.json()[0]["fundingRate"])
-        return rate * 100  # 소수→퍼센트
+        return rate * 100
     except Exception:
         return None
 
 
-async def _fetch_mvrv() -> float | None:
-    """blockchain.info MVRV 차트에서 최신값."""
-    r = await _get(
-        "https://api.blockchain.info/charts/mvrv",
-        params={"timespan": "5days", "format": "json"},
-    )
-    if not r:
-        return None
-    try:
-        values = r.json()["values"]
-        if values:
-            return values[-1]["y"]
-    except Exception:
-        pass
-    return None
+# ──────────────────────────────────────────────
+# Fallback: blockchain.info (Puell 백업)
+# ──────────────────────────────────────────────
 
-
-async def _fetch_puell() -> float | None:
-    """blockchain.info 채굴 수익으로 Puell Multiple 계산.
-    Puell = 일일 채굴 수익 / 365일 평균 채굴 수익.
-    """
+async def _fetch_puell_fallback() -> float | None:
+    """blockchain.info 채굴 수익으로 Puell Multiple 계산."""
     r = await _get(
         "https://api.blockchain.info/charts/miners-revenue",
         params={"timespan": "2years", "format": "json", "rollingAverage": "1days"},
@@ -165,7 +205,6 @@ def _calc_geometric_mean(prices: list[float], period: int) -> float | None:
 
 
 def _calc_mayer(prices: list[float]) -> float | None:
-    """Mayer Multiple = 현재가 / 200DMA."""
     sma200 = _calc_sma(prices, 200)
     if not sma200 or sma200 == 0:
         return None
@@ -173,20 +212,20 @@ def _calc_mayer(prices: list[float]) -> float | None:
 
 
 def _calc_pi_cycle(prices: list[float]) -> float | None:
-    """Pi Cycle Top = 111DMA / (2 × 350DMA). >= 1.0이면 HIT."""
+    """111DMA / (2 × 350DMA). 350일 데이터 부족 시 가용 데이터로 계산."""
     sma111 = _calc_sma(prices, 111)
+    if not sma111:
+        return None
     sma350 = _calc_sma(prices, 350)
-    if not sma111 or not sma350 or sma350 == 0:
+    if not sma350:
+        sma350 = _calc_sma(prices, len(prices))
+    if not sma350 or sma350 == 0:
         return None
     return sma111 / (2 * sma350)
 
 
 def _calc_log_growth(prices: list[float]) -> float | None:
-    """Log Growth Curve = price / log_fair_value.
-    간소화 모델: BTC genesis부터 일수 기반 log regression.
-    fair = 10^(a * log10(days) + b), a≈5.84, b≈-17.01 (Trolololo 근사).
-    """
-    # BTC genesis: 2009-01-03
+    """price / log_fair_value (Trolololo log regression)."""
     genesis = datetime(2009, 1, 3, tzinfo=timezone.utc)
     now = datetime.now(timezone.utc)
     days_since_genesis = (now - genesis).days
@@ -194,7 +233,6 @@ def _calc_log_growth(prices: list[float]) -> float | None:
         return None
     try:
         log_days = math.log10(days_since_genesis)
-        # Trolololo log regression coefficients (근사치)
         fair_value = 10 ** (5.84 * log_days - 17.01)
         current_price = prices[-1]
         if fair_value > 0:
@@ -205,16 +243,13 @@ def _calc_log_growth(prices: list[float]) -> float | None:
 
 
 def _calc_ahr999(prices: list[float]) -> float | None:
-    """Ahr999 = price / (200d_geometric_mean × log_fitted_price).
-    >= 1.2이면 고평가(매도 고려), < 0.45이면 저평가(적립).
-    """
+    """sqrt((price/geo_mean_200d) * (price/fitted_price))."""
     if len(prices) < 200:
         return None
     geo_mean = _calc_geometric_mean(prices, 200)
     if not geo_mean or geo_mean == 0:
         return None
 
-    # Log fitted price (같은 Trolololo 모델 사용)
     genesis = datetime(2009, 1, 3, tzinfo=timezone.utc)
     now = datetime.now(timezone.utc)
     days_since_genesis = (now - genesis).days
@@ -225,25 +260,11 @@ def _calc_ahr999(prices: list[float]) -> float | None:
         return None
 
     current_price = prices[-1]
-    denominator = geo_mean * fitted_price
-    if denominator == 0:
+    if fitted_price <= 0:
         return None
-    # Ahr999 원래 공식: price / (geo_mean) 와 price / fitted를 조합
-    # 간소화: (price / geo_mean) * (price / fitted) 의 기하평균
     ratio_geo = current_price / geo_mean
     ratio_fit = current_price / fitted_price
     return math.sqrt(ratio_geo * ratio_fit)
-
-
-# ──────────────────────────────────────────────
-# NUPL 추정 (MVRV 기반 간이 변환)
-# NUPL ≈ 1 - 1/MVRV (근사치, 정확하진 않지만 방향성 일치)
-# ──────────────────────────────────────────────
-
-def _estimate_nupl(mvrv: float | None) -> float | None:
-    if mvrv is None or mvrv == 0:
-        return None
-    return 1 - (1 / mvrv)
 
 
 # ──────────────────────────────────────────────
@@ -253,29 +274,37 @@ def _estimate_nupl(mvrv: float | None) -> float | None:
 async def fetch_top_signals() -> dict:
     """12개 지표 데이터를 수집하고 HIT/CLEAR 판정."""
 
-    # 병렬 fetch
-    prices_task = asyncio.create_task(_fetch_coingecko_history(400))
+    # 병렬 fetch — Surf API (4크레딧) + CoinGecko + 기타
+    mvrv_task = asyncio.create_task(_fetch_surf_metric("mvrv"))
+    nupl_task = asyncio.create_task(_fetch_surf_metric("nupl"))
+    puell_task = asyncio.create_task(_fetch_surf_metric("puell-multiple"))
+    inflow_task = asyncio.create_task(_fetch_surf_exchange_inflow())
+    prices_task = asyncio.create_task(_fetch_coingecko_history())
     dominance_task = asyncio.create_task(_fetch_btc_dominance())
     fg_task = asyncio.create_task(_fetch_fear_greed())
     funding_task = asyncio.create_task(_fetch_funding_rate())
-    mvrv_task = asyncio.create_task(_fetch_mvrv())
-    puell_task = asyncio.create_task(_fetch_puell())
+    puell_fb_task = asyncio.create_task(_fetch_puell_fallback())
 
+    mvrv = await mvrv_task
+    nupl = await nupl_task
+    puell = await puell_task
+    exchange_inflow = await inflow_task
     prices = await prices_task
     dominance = await dominance_task
     fg = await fg_task
     funding = await funding_task
-    mvrv = await mvrv_task
-    puell = await puell_task
+    puell_fb = await puell_fb_task
+
+    # Surf 실패 시 fallback
+    if puell is None:
+        puell = puell_fb
 
     # 가격 기반 계산
     mayer = _calc_mayer(prices) if prices else None
     pi_cycle = _calc_pi_cycle(prices) if prices else None
     log_growth = _calc_log_growth(prices) if prices else None
     ahr999 = _calc_ahr999(prices) if prices else None
-    nupl = _estimate_nupl(mvrv)
 
-    # 결과 조립
     values = {
         "mvrv": mvrv,
         "nupl": nupl,
@@ -286,8 +315,8 @@ async def fetch_top_signals() -> dict:
         "log_growth": log_growth,
         "fear_greed": fg,
         "funding": funding,
-        "exchange_inflow": None,  # 무료 API 소스 없음
-        "etf_outflow": None,      # 무료 API 소스 없음
+        "exchange_inflow": exchange_inflow,
+        "etf_outflow": None,  # 무료 API 소스 없음 (ETF 데이터는 유료)
         "ahr999": ahr999,
     }
 
@@ -325,7 +354,6 @@ def _evaluate(values: dict) -> dict:
             "hit": hit,
         })
 
-    # 리스크 레벨 판정
     if total_online == 0:
         risk_level = "UNKNOWN"
         risk_emoji = "❓"
@@ -361,14 +389,12 @@ def _evaluate(values: dict) -> dict:
 # ──────────────────────────────────────────────
 
 def format_top_signal(data: dict) -> str:
-    """Top Signal 결과를 텔레그램 메시지로 포맷."""
     lines = []
     lines.append(f"🔥 Top Signal ({data['timestamp']})")
     lines.append("")
     lines.append(f"■ 시그널: {data['hits']}/{data['total']}  {data['risk_emoji']}{data['risk_level']}")
     lines.append("")
 
-    # 카테고리별 그룹핑
     categories = ["On-Chain", "Cycle", "Sentiment", "Derivatives", "Flow"]
     for cat in categories:
         cat_indicators = [i for i in data["indicators"] if i["cat"] == cat]
@@ -381,7 +407,6 @@ def format_top_signal(data: dict) -> str:
                 val_str = "—"
                 status = "⬜"
             else:
-                # 값 포맷팅
                 if ind["id"] == "dominance":
                     val_str = f"{val:.1f}%"
                 elif ind["id"] == "funding":
@@ -399,7 +424,6 @@ def format_top_signal(data: dict) -> str:
 
                 status = "🚨" if ind["hit"] else "✅"
 
-            # threshold 표시
             if ind["op"] == ">=":
                 thr_str = f"≥{ind['threshold']}"
             else:
@@ -409,7 +433,6 @@ def format_top_signal(data: dict) -> str:
 
     lines.append("")
 
-    # 간단한 해석
     if data["hits"] == 0:
         lines.append("💬 사이클 과열 징후 없음. 안전 구간.")
     elif data["hits"] <= 2:
