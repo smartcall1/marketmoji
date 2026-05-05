@@ -13,6 +13,7 @@ from fetchers import fetch_all
 from interpreter import diagnose
 from formatter import build_dashboard
 from guide import get_guide
+from top_signal import fetch_top_signals, format_top_signal
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +46,12 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     subs.add(chat_id)
     _save_subscribers(subs)
     await update.message.reply_text(
-        "\U0001f4ca \uc2dc\uc7a5 \uac74\uac15\uac80\uc9c4 \ubd07 \uc2dc\uc791!\n\n"
-        "\ub9e4\uc77c \uc624\uc804 10\uc2dc(KST) \uac70\uc2dc\uacbd\uc81c \ub300\uc2dc\ubcf4\ub4dc\ub97c \ubcf4\ub0b4\ub4dc\ub9bd\ub2c8\ub2e4.\n\n"
-        "\U0001f4cb \uba85\ub839\uc5b4:\n"
-        "  /check  - \uc9c0\uae08 \uc989\uc2dc \ud655\uc778\n"
+        "\ud83d\udcca \uc2dc\uc7a5 \uac74\uac15\uac80\uc9c4 \ubd07 \uc2dc\uc791!\n\n"
+        "\ub9e4\uc77c \uc624\uc804 7\uc2dc(KST) \uac70\uc2dc\uacbd\uc81c \ub300\uc2dc\ubcf4\ub4dc + Top Signal\uc744 \ubcf4\ub0b4\ub4dc\ub9bd\ub2c8\ub2e4.\n\n"
+        "\ud83d\udccb \uba85\ub839\uc5b4:\n"
+        "  /check  - \uac70\uc2dc\uacbd\uc81c \ub300\uc2dc\ubcf4\ub4dc\n"
+        "  /signal - BTC \uc0ac\uc774\ud074 \ud0d1 \uc2dc\uadf8\ub110\n"
         "  /guide  - \uc9c0\ud45c \ud574\uc11d \uac00\uc774\ub4dc\n"
-        "  /guide cape - \uac1c\ubcc4 \uc9c0\ud45c \uc124\uba85\n"
         "  /stop   - \uc54c\ub9bc \uc911\ub2e8"
     )
 
@@ -75,6 +76,17 @@ async def cmd_check(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(f"\u274c \ub370\uc774\ud130 \uc218\uc9d1 \uc2e4\ud328: {e}")
 
 
+async def cmd_signal(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text("⏳ Top Signal 데이터 수집 중...")
+    try:
+        data = await fetch_top_signals()
+        msg = format_top_signal(data)
+        await update.message.reply_text(msg)
+    except Exception as e:
+        logger.exception("signal fetch failed")
+        await update.message.reply_text(f"❌ Top Signal 수집 실패: {e}")
+
+
 async def cmd_guide(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     key = ctx.args[0] if ctx.args else None
     msg = get_guide(key)
@@ -87,18 +99,29 @@ async def cmd_guide(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def daily_alert(ctx: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info("Daily alert triggered")
+
+    # \uba54\uc2dc\uc9c0 1: \uac70\uc2dc\uacbd\uc81c \ub300\uc2dc\ubcf4\ub4dc
     try:
         data = await fetch_all()
         diag = diagnose(data)
-        msg = build_dashboard(diag)
+        msg1 = build_dashboard(diag)
     except Exception as e:
         logger.exception("daily fetch failed")
-        msg = f"\u274c \uc624\ub298 \ub370\uc774\ud130 \uc218\uc9d1 \uc2e4\ud328: {e}"
+        msg1 = f"\u274c \uc624\ub298 \ub370\uc774\ud130 \uc218\uc9d1 \uc2e4\ud328: {e}"
+
+    # \uba54\uc2dc\uc9c0 2: Top Signal
+    try:
+        sig_data = await fetch_top_signals()
+        msg2 = format_top_signal(sig_data)
+    except Exception as e:
+        logger.exception("top signal fetch failed")
+        msg2 = f"\u274c Top Signal \uc218\uc9d1 \uc2e4\ud328: {e}"
 
     subs = _load_subscribers()
     for chat_id in subs:
         try:
-            await ctx.bot.send_message(chat_id=chat_id, text=msg)
+            await ctx.bot.send_message(chat_id=chat_id, text=msg1)
+            await ctx.bot.send_message(chat_id=chat_id, text=msg2)
         except Exception:
             logger.warning(f"Failed to send to {chat_id}")
 
@@ -109,6 +132,7 @@ def run_bot() -> None:
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("stop", cmd_stop))
     app.add_handler(CommandHandler("check", cmd_check))
+    app.add_handler(CommandHandler("signal", cmd_signal))
     app.add_handler(CommandHandler("guide", cmd_guide))
 
     job_queue = app.job_queue
