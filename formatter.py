@@ -15,6 +15,12 @@ def build_dashboard(diag: dict) -> str:
             name = {"cape": "CAPE", "ecy": "ECY", "buffett": "Buffett"}[key]
             lines.append(f"{name} {i['fmt']} {i['emoji']}{i['desc']}")
 
+    if "concentration" in ind:
+        lines.append("")
+        lines.append("\u25a0 \uc9d1\uc911\ub3c4")
+        i = ind["concentration"]
+        lines.append(f"Big10 {i['fmt']} {i['emoji']}{i['desc']}")
+
     lines.append("")
     lines.append("\u25a0 \uacbd\uae30")
     if "yield_curve" in ind:

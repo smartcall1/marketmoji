@@ -76,3 +76,11 @@ FG_CRYPTO_THRESHOLDS = [
     (75, 4, "\U0001f60f", "\uc695\uc2ec"),
     (100, 5, "\U0001f911", "\uadf9\ub2e8\uc801 \ud0d0\uc695"),
 ]
+
+CONCENTRATION_THRESHOLDS = [
+    (25, 1, "\U0001f7e2", "\uac74\uac15\ud55c \ubd84\uc0b0"),
+    (30, 2, "\U0001f7e2", "\uc591\ud638"),
+    (35, 3, "\U0001f7e1", "\uc9d1\uc911 \uc2ec\ud654"),
+    (40, 4, "\U0001f7e0", "\uc704\ud5d8 \uad6c\uac04"),
+    (999, 5, "\U0001f480", "\ubc84\ube14 \uad6c\uac04"),
+]

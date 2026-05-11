@@ -2,6 +2,7 @@ from config import (
     CAPE_THRESHOLDS, ECY_THRESHOLDS, BUFFETT_THRESHOLDS,
     YIELD_CURVE_THRESHOLDS, VIX_THRESHOLDS,
     FG_STOCK_THRESHOLDS, FG_CRYPTO_THRESHOLDS,
+    CONCENTRATION_THRESHOLDS,
 )
 
 
@@ -33,6 +34,9 @@ def interpret_fg_stock(v: int) -> tuple[int, str, str]:
 
 def interpret_fg_crypto(v: int) -> tuple[int, str, str]:
     return _interpret(v, FG_CRYPTO_THRESHOLDS)
+
+def interpret_concentration(v: float) -> tuple[int, str, str]:
+    return _interpret(v, CONCENTRATION_THRESHOLDS)
 
 
 MATRIX = {
@@ -123,6 +127,10 @@ def diagnose(data: dict) -> dict:
     if data.get("rate_10y") is not None:
         indicators["rate_10y"] = {"value": data["rate_10y"], "fmt": f"{data['rate_10y']:.2f}%"}
 
+    if data.get("concentration") is not None:
+        s, e, d = interpret_concentration(data["concentration"])
+        indicators["concentration"] = {"value": data["concentration"], "fmt": f"{data['concentration']:.1f}%", "score": s, "emoji": e, "desc": d}
+
     if data.get("vix") is not None:
         s, e, d = interpret_vix(data["vix"])
         sent_scores.append(s)
@@ -189,6 +197,9 @@ def calc_marks_temp(data: dict) -> dict | None:
 
     if data.get("credit_spread") is not None:
         components["신용"] = _norm(data["credit_spread"], 10, 3)
+
+    if data.get("concentration") is not None:
+        components["집중"] = _norm(data["concentration"], 20, 45)
 
     if not components:
         return None

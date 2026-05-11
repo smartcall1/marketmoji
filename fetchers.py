@@ -123,6 +123,60 @@ async def fetch_credit_spread() -> float | None:
     return None
 
 
+AI_BIG_10 = ["NVDA", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "AVGO", "MU", "AMD"]
+
+
+def _parse_mcap(text: str) -> float | None:
+    text = text.strip().replace(",", "")
+    m = re.match(r"([\d.]+)\s*([TBM])", text)
+    if not m:
+        return None
+    val = float(m.group(1))
+    suffix = m.group(2)
+    return val * {"T": 1e12, "B": 1e9, "M": 1e6}[suffix]
+
+
+async def fetch_concentration() -> float | None:
+    """S&P 500 내 AI Big 10 시가총액 집중도(%)."""
+    r = await _get("https://stockanalysis.com/list/sp-500-stocks/")
+    if not r:
+        return None
+    try:
+        soup = BeautifulSoup(r.text, "html.parser")
+        table = soup.find("table")
+        if not table:
+            return None
+
+        headers = [th.get_text(strip=True) for th in table.find_all("th")]
+        sym_idx = headers.index("Symbol")
+        name_idx = headers.index("Company Name")
+        mcap_idx = headers.index("Market Cap")
+
+        seen_companies: set[str] = set()
+        total_mcap = 0.0
+        big10_mcap = 0.0
+
+        for row in table.find_all("tr")[1:]:
+            cols = row.find_all("td")
+            if len(cols) <= mcap_idx:
+                continue
+            symbol = cols[sym_idx].get_text(strip=True)
+            name = cols[name_idx].get_text(strip=True)
+            mcap = _parse_mcap(cols[mcap_idx].get_text(strip=True))
+            if mcap is None or name in seen_companies:
+                continue
+            seen_companies.add(name)
+            total_mcap += mcap
+            if symbol in AI_BIG_10:
+                big10_mcap += mcap
+
+        if total_mcap <= 0:
+            return None
+        return round(big10_mcap / total_mcap * 100, 1)
+    except Exception:
+        return None
+
+
 async def fetch_all() -> dict:
     import asyncio
 
@@ -135,6 +189,7 @@ async def fetch_all() -> dict:
     cnn_fg_t = asyncio.create_task(fetch_cnn_fg())
     crypto_fg_t = asyncio.create_task(fetch_crypto_fg())
     credit_t = asyncio.create_task(fetch_credit_spread())
+    conc_t = asyncio.create_task(fetch_concentration())
 
     cape = await cape_t
     real_rate = await real_rate_t
@@ -145,6 +200,7 @@ async def fetch_all() -> dict:
     cnn_fg = await cnn_fg_t
     crypto_fg = await crypto_fg_t
     credit_spread = await credit_t
+    concentration = await conc_t
 
     ecy = None
     if cape and real_rate and cape > 0:
@@ -166,4 +222,5 @@ async def fetch_all() -> dict:
         "cnn_fg": cnn_fg,
         "crypto_fg": crypto_fg,
         "credit_spread": credit_spread,
+        "concentration": concentration,
     }
