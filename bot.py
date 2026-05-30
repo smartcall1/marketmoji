@@ -14,6 +14,7 @@ from interpreter import diagnose
 from formatter import build_dashboard
 from guide import get_guide
 from top_signal import fetch_top_signals, format_top_signal
+from collapse_signal import fetch_collapse_signals, format_collapse_signal
 
 logger = logging.getLogger(__name__)
 
@@ -49,10 +50,11 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         "\ud83d\udcca \uc2dc\uc7a5 \uac74\uac15\uac80\uc9c4 \ubd07 \uc2dc\uc791!\n\n"
         "\ub9e4\uc77c \uc624\uc804 7\uc2dc(KST) \uac70\uc2dc\uacbd\uc81c \ub300\uc2dc\ubcf4\ub4dc + Top Signal\uc744 \ubcf4\ub0b4\ub4dc\ub9bd\ub2c8\ub2e4.\n\n"
         "\ud83d\udccb \uba85\ub839\uc5b4:\n"
-        "  /check  - \uac70\uc2dc\uacbd\uc81c \ub300\uc2dc\ubcf4\ub4dc\n"
-        "  /signal - BTC \uc0ac\uc774\ud074 \ud0d1 \uc2dc\uadf8\ub110\n"
-        "  /guide  - \uc9c0\ud45c \ud574\uc11d \uac00\uc774\ub4dc\n"
-        "  /stop   - \uc54c\ub9bc \uc911\ub2e8"
+        "  /check    - \uac70\uc2dc\uacbd\uc81c \ub300\uc2dc\ubcf4\ub4dc\n"
+        "  /signal   - BTC \uc0ac\uc774\ud074 \ud0d1 \uc2dc\uadf8\ub110\n"
+        "  /collapse - AI \ubc84\ube14 \ubd95\uad34 3\uc2dc\uadf8\ub110 (KB \uc774\uc740\ud0dd)\n"
+        "  /guide    - \uc9c0\ud45c \ud574\uc11d \uac00\uc774\ub4dc\n"
+        "  /stop     - \uc54c\ub9bc \uc911\ub2e8"
     )
 
 
@@ -87,6 +89,17 @@ async def cmd_signal(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(f"❌ Top Signal 수집 실패: {e}")
 
 
+async def cmd_collapse(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text("⏳ 붕괴 시그널 데이터 수집 중...")
+    try:
+        data = await fetch_collapse_signals()
+        msg = format_collapse_signal(data)
+        await update.message.reply_text(msg)
+    except Exception as e:
+        logger.exception("collapse signal fetch failed")
+        await update.message.reply_text(f"❌ 붕괴 시그널 수집 실패: {e}")
+
+
 async def cmd_guide(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     key = ctx.args[0] if ctx.args else None
     msg = get_guide(key)
@@ -117,11 +130,20 @@ async def daily_alert(ctx: ContextTypes.DEFAULT_TYPE) -> None:
         logger.exception("top signal fetch failed")
         msg2 = f"\u274c Top Signal \uc218\uc9d1 \uc2e4\ud328: {e}"
 
+    # \uba54\uc2dc\uc9c0 3: \ubd95\uad34 \uc2dc\uadf8\ub110 (KB \uc774\uc740\ud0dd Gravity Rules)
+    try:
+        col_data = await fetch_collapse_signals()
+        msg3 = format_collapse_signal(col_data)
+    except Exception as e:
+        logger.exception("collapse signal fetch failed")
+        msg3 = f"\u274c \ubd95\uad34 \uc2dc\uadf8\ub110 \uc218\uc9d1 \uc2e4\ud328: {e}"
+
     subs = _load_subscribers()
     for chat_id in subs:
         try:
             await ctx.bot.send_message(chat_id=chat_id, text=msg1)
             await ctx.bot.send_message(chat_id=chat_id, text=msg2)
+            await ctx.bot.send_message(chat_id=chat_id, text=msg3)
         except Exception:
             logger.warning(f"Failed to send to {chat_id}")
 
@@ -133,6 +155,7 @@ def run_bot() -> None:
     app.add_handler(CommandHandler("stop", cmd_stop))
     app.add_handler(CommandHandler("check", cmd_check))
     app.add_handler(CommandHandler("signal", cmd_signal))
+    app.add_handler(CommandHandler("collapse", cmd_collapse))
     app.add_handler(CommandHandler("guide", cmd_guide))
 
     job_queue = app.job_queue
