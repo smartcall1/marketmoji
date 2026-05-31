@@ -112,12 +112,22 @@ def _classify(value: float | None, history: list[float] | None, sig: dict) -> tu
 
 
 TREND_LABEL = {
-    "TRENDING": "추세적 점화",
-    "SPIKE": "단발 침투",
-    "RISING": "상승 중",
-    "FLAT": "횡보",
-    "STABLE": "안정",
-    "—": "—",
+    "TRENDING": "🚨 진짜 점화 (계속 임계값 위)",
+    "SPIKE": "🟥 일시 돌파 (한 번 찔러봄)",
+    "RISING": "📈 임박 + 오르는 중",
+    "FLAT": "🟡 임박 (횡보)",
+    "STABLE": "✓ 안전",
+    "—": "데이터 없음",
+}
+
+
+RISK_LABEL_KO = {
+    "SAFE":        "🟢 평온",
+    "WATCH-LITE":  "🟡 경계선 진입",
+    "WATCH":       "🟠 주시 단계",
+    "CAUTION":     "🔴 위험 단계",
+    "DANGER":      "🚨 매우 위험",
+    "COLLAPSE":    "💀 붕괴 패턴",
 }
 
 
@@ -191,25 +201,25 @@ async def fetch_collapse_signals() -> dict:
         "sticky_core": sticky_core,
     }
 
-    # 종합 리스크 — 추세적 점화(TRIGGER)에 더 큰 가중치
+    # 종합 리스크 — 진짜 점화(TRIGGER)에 큰 가중치
     if triggered >= 2:
         risk_level, risk_emoji = "COLLAPSE", "💀"
-        verdict = "2축 이상 추세적 점화 — 1929·2000년 패턴 재현."
+        verdict = "2개 축이 진짜 점화됐소. 1929·2000년 버블 붕괴 패턴 재현."
     elif triggered == 1 and spiked >= 1:
         risk_level, risk_emoji = "DANGER", "🚨"
-        verdict = "한 축 추세 점화 + 다른 축 침투. 다음 단계 임박."
+        verdict = "한 축 점화 + 다른 축 일시 돌파. 두 번째 점화 임박."
     elif triggered == 1:
         risk_level, risk_emoji = "CAUTION", "🔴"
-        verdict = "한 축 추세적 점화. 나머지 축 추적 필수."
+        verdict = "한 축 점화됐소. 나머지 축도 추적 필수."
     elif spiked >= 1:
         risk_level, risk_emoji = "WATCH", "🟠"
-        verdict = "단발 침투 발생. 추세 확정 시 트리거 격상."
+        verdict = "임계값 한 번 찔렀소. 계속 위에 머물면 진짜 점화."
     elif warned >= 2:
         risk_level, risk_emoji = "WATCH", "🟠"
-        verdict = "복수 축이 경계선 진입. 인플레 재점화 가능성."
+        verdict = "두 개 이상 축이 임박 단계. 인플레 재점화 가능성."
     elif warned == 1:
         risk_level, risk_emoji = "WATCH-LITE", "🟡"
-        verdict = "경계선 진입. 트리거 임계값 추적 시작."
+        verdict = "한 축이 트리거 직전. 임계값 추적 시작하시오."
     else:
         risk_level, risk_emoji = "SAFE", "🟢"
         verdict = "강세장 지속. AI 랠리는 아직 살아있소이다."
@@ -249,9 +259,10 @@ def format_collapse_signal(data: dict) -> str:
     lines = []
     lines.append(f"💥 붕괴 시그널 — KB 이은택 「Gravity Rules」 ({data['timestamp']})")
     lines.append("")
+    risk_ko = RISK_LABEL_KO.get(data["risk_level"], f"{data['risk_emoji']}{data['risk_level']}")
+    lines.append(f"■ 종합 위험도: {risk_ko}")
     lines.append(
-        f"■ 점화: 추세 {data['triggered']} / 침투 {data['spiked']} / 경계 {data['warned']}  "
-        f"→ {data['risk_emoji']}{data['risk_level']}"
+        f"   진짜점화 {data['triggered']} · 일시돌파 {data['spiked']} · 임박 {data['warned']}  (3개 축 중)"
     )
     lines.append("")
 
@@ -262,16 +273,18 @@ def format_collapse_signal(data: dict) -> str:
         warn_str = f"≥{sig['warn']}{sig['unit']}"
         spark = _mini_sparkline(sig.get("history"))
         trend_window_label = (
-            f"{sig['trend_window']}일중{sig['trend_hits_needed']}일"
+            f"최근 20영업일 중 15일 이상"
             if sig["id"] == "ust10y"
-            else f"{sig['trend_hits_needed']}개월연속"
+            else f"최근 3개월 연속"
         )
 
-        lines.append(f"{sig['emoji']} {sig['name']}  [{sig['trend_label']}]")
-        lines.append(f"   현재 {val_str}  |  주의 {warn_str} / 트리거 {trigger_str}")
+        lines.append(f"{sig['emoji']} {sig['name']}")
+        lines.append(f"   ↳ 상태: {sig['trend_label']}")
+        lines.append(f"   현재값: {val_str}")
+        lines.append(f"   기준: 임박 {warn_str} / 점화 {trigger_str}")
         if spark:
-            lines.append(f"   추세 {spark}  (기준: {trend_window_label})")
-        lines.append(f"   ↳ {sig['note']}")
+            lines.append(f"   추세: {spark}  ({trend_window_label} 점화로 인정)")
+        lines.append(f"   💡 {sig['note']}")
         lines.append("")
 
     sc = data["extra"].get("sticky_core")
@@ -282,10 +295,11 @@ def format_collapse_signal(data: dict) -> str:
 
     lines.append(f"💬 {data['verdict']}")
     lines.append("")
-    lines.append("📖 3축 원리:")
-    lines.append(" ① 금리 역사적 고점 돌파(No way back)")
-    lines.append(" ② Core 인플레 3% 재돌파")
-    lines.append(" ③ 주거비 제외 sticky로 끈적함 확인")
-    lines.append("→ 셋 동시 추세 점화 = 1929·2000년 패턴")
+    lines.append("📖 용어 설명:")
+    lines.append(" • 진짜 점화 = 임계값을 계속(추세적으로) 넘은 상태 → 위험 확정")
+    lines.append(" • 일시 돌파 = 임계값을 한 번만 찔러본 상태 → 추세 확정 시 점화")
+    lines.append(" • 임박     = 점화 직전 단계 → 추적 시작")
+    lines.append("")
+    lines.append("📖 3축이 모두 진짜 점화 = 1929·2000년 버블 붕괴 패턴")
 
     return "\n".join(lines)

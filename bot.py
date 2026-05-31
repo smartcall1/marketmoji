@@ -50,6 +50,7 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         "\ud83d\udcca \uc2dc\uc7a5 \uac74\uac15\uac80\uc9c4 \ubd07 \uc2dc\uc791!\n\n"
         "\ub9e4\uc77c \uc624\uc804 7\uc2dc(KST) \uac70\uc2dc\uacbd\uc81c \ub300\uc2dc\ubcf4\ub4dc + Top Signal\uc744 \ubcf4\ub0b4\ub4dc\ub9bd\ub2c8\ub2e4.\n\n"
         "\ud83d\udccb \uba85\ub839\uc5b4:\n"
+        "  /status   - \u2b50 3\uac1c \uba54\uc2dc\uc9c0 \ud55c \ubc88\uc5d0 \ubc1b\uae30 (check+signal+collapse)\n"
         "  /check    - \uac70\uc2dc\uacbd\uc81c \ub300\uc2dc\ubcf4\ub4dc\n"
         "  /signal   - BTC \uc0ac\uc774\ud074 \ud0d1 \uc2dc\uadf8\ub110\n"
         "  /collapse - AI \ubc84\ube14 \ubd95\uad34 3\uc2dc\uadf8\ub110 (KB \uc774\uc740\ud0dd)\n"
@@ -87,6 +88,39 @@ async def cmd_signal(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     except Exception as e:
         logger.exception("signal fetch failed")
         await update.message.reply_text(f"❌ Top Signal 수집 실패: {e}")
+
+
+async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    """3개 메시지(/check + /signal + /collapse)를 한 번에 순차 송신."""
+    await update.message.reply_text("⏳ 전체 시장 데이터 수집 중... (잠시만 기다리시오)")
+
+    # 메시지 1: 거시 대시보드
+    try:
+        data = await fetch_all()
+        diag = diagnose(data)
+        msg1 = build_dashboard(diag)
+    except Exception as e:
+        logger.exception("status: dashboard failed")
+        msg1 = f"❌ 거시 대시보드 수집 실패: {e}"
+    await update.message.reply_text(msg1)
+
+    # 메시지 2: Top Signal
+    try:
+        sig_data = await fetch_top_signals()
+        msg2 = format_top_signal(sig_data)
+    except Exception as e:
+        logger.exception("status: top signal failed")
+        msg2 = f"❌ Top Signal 수집 실패: {e}"
+    await update.message.reply_text(msg2)
+
+    # 메시지 3: 붕괴 시그널
+    try:
+        col_data = await fetch_collapse_signals()
+        msg3 = format_collapse_signal(col_data)
+    except Exception as e:
+        logger.exception("status: collapse signal failed")
+        msg3 = f"❌ 붕괴 시그널 수집 실패: {e}"
+    await update.message.reply_text(msg3)
 
 
 async def cmd_collapse(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
@@ -156,6 +190,7 @@ def run_bot() -> None:
     app.add_handler(CommandHandler("check", cmd_check))
     app.add_handler(CommandHandler("signal", cmd_signal))
     app.add_handler(CommandHandler("collapse", cmd_collapse))
+    app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("guide", cmd_guide))
 
     job_queue = app.job_queue
