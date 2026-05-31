@@ -257,49 +257,37 @@ def _mini_sparkline(values: list[float] | None, n: int = 8) -> str:
 
 def format_collapse_signal(data: dict) -> str:
     lines = []
-    lines.append(f"💥 붕괴 시그널 — KB 이은택 「Gravity Rules」 ({data['timestamp']})")
-    lines.append("")
+    lines.append(f"💥 붕괴 시그널 — KB 이은택 ({data['timestamp']})")
     risk_ko = RISK_LABEL_KO.get(data["risk_level"], f"{data['risk_emoji']}{data['risk_level']}")
-    lines.append(f"■ 종합 위험도: {risk_ko}")
     lines.append(
-        f"   진짜점화 {data['triggered']} · 일시돌파 {data['spiked']} · 임박 {data['warned']}  (3개 축 중)"
+        f"{risk_ko} · 진짜점화 {data['triggered']}/일시 {data['spiked']}/임박 {data['warned']}"
     )
     lines.append("")
 
     for sig in data["signals"]:
         val = sig["value"]
         val_str = f"{val:.2f}{sig['unit']}" if val is not None else "—"
-        trigger_str = f"≥{sig['trigger']}{sig['unit']}"
-        warn_str = f"≥{sig['warn']}{sig['unit']}"
         spark = _mini_sparkline(sig.get("history"))
-        trend_window_label = (
-            f"최근 20영업일 중 15일 이상"
-            if sig["id"] == "ust10y"
-            else f"최근 3개월 연속"
-        )
 
-        lines.append(f"{sig['emoji']} {sig['name']}")
-        lines.append(f"   ↳ 상태: {sig['trend_label']}")
-        lines.append(f"   현재값: {val_str}")
-        lines.append(f"   기준: 임박 {warn_str} / 점화 {trigger_str}")
+        # 1줄: 시그널명 + 현재값 + 상태
+        lines.append(f"{sig['emoji']} {sig['name']}  {val_str} · {sig['trend_label']}")
+        # 2줄: 임계값 + 추세
+        thr_line = f"임박≥{sig['warn']}{sig['unit']} / 점화≥{sig['trigger']}{sig['unit']}"
         if spark:
-            lines.append(f"   추세: {spark}  ({trend_window_label} 점화로 인정)")
-        lines.append(f"   💡 {sig['note']}")
+            thr_line += f" · {spark}"
+        lines.append(thr_line)
+        # 3줄: 해설
+        lines.append(f"💡 {sig['note']}")
         lines.append("")
 
     sc = data["extra"].get("sticky_core")
     if sc is not None:
         sc_val = sc[1] if isinstance(sc, tuple) else sc
-        lines.append(f"※ 참조: Sticky Core CPI(주거비 포함) {sc_val:.2f}%")
-        lines.append("")
+        lines.append(f"※ Sticky Core(주거비포함) {sc_val:.2f}%")
 
     lines.append(f"💬 {data['verdict']}")
     lines.append("")
-    lines.append("📖 용어 설명:")
-    lines.append(" • 진짜 점화 = 임계값을 계속(추세적으로) 넘은 상태 → 위험 확정")
-    lines.append(" • 일시 돌파 = 임계값을 한 번만 찔러본 상태 → 추세 확정 시 점화")
-    lines.append(" • 임박     = 점화 직전 단계 → 추적 시작")
-    lines.append("")
-    lines.append("📖 3축이 모두 진짜 점화 = 1929·2000년 버블 붕괴 패턴")
+    lines.append("📖 진짜점화=계속 임계위 / 일시돌파=한번찔러봄 / 임박=직전")
+    lines.append("3축 동시 진짜점화 = 1929·2000 버블붕괴 패턴")
 
     return "\n".join(lines)
