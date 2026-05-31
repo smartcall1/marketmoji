@@ -62,9 +62,6 @@ def build_dashboard(diag: dict) -> str:
         lines.append(detail_line)
 
     lines.append("")
-    lines.extend(_draw_compass(diag["valuation"], diag["sentiment"]))
-
-    lines.append("")
     lines.append("/guide \uc9c0\ud45c\ud574\uc11d\ubc95")
 
     return "\n".join(lines)
