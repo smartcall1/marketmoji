@@ -5,7 +5,7 @@ from datetime import time, timezone, timedelta
 
 from telegram import Update
 from telegram.ext import (
-    Application, CommandHandler, ContextTypes,
+    Application, CommandHandler, ContextTypes, filters,
 )
 
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, ALERT_HOUR_UTC, ALERT_MINUTE
@@ -219,7 +219,8 @@ def run_bot() -> None:
     app.add_handler(CommandHandler("collapse", cmd_collapse))
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("guide", cmd_guide))
-    app.add_handler(CommandHandler("l", cmd_lighter))
+    owner_filter = filters.Chat(int(TELEGRAM_CHAT_ID)) if TELEGRAM_CHAT_ID else filters.ALL
+    app.add_handler(CommandHandler("l", cmd_lighter, filters=owner_filter))
 
     job_queue = app.job_queue
 
