@@ -156,6 +156,21 @@ async def cmd_guide(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(msg)
 
 
+async def lighter_scheduled(ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        msg = await fetch_lighter_status()
+    except Exception as e:
+        logger.exception("lighter scheduled failed")
+        msg = f"❌ Lighter 자동 조회 실패: {e}"
+
+    subs = _load_subscribers()
+    for chat_id in subs:
+        try:
+            await ctx.bot.send_message(chat_id=chat_id, text=msg)
+        except Exception:
+            logger.warning(f"Failed to send lighter status to {chat_id}")
+
+
 async def daily_alert(ctx: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info("Daily alert triggered")
 
@@ -207,9 +222,21 @@ def run_bot() -> None:
     app.add_handler(CommandHandler("l", cmd_lighter))
 
     job_queue = app.job_queue
+
+    # 기존 거시경제 대시보드: 매일 07:00 KST (22:00 UTC)
     alert_time = time(hour=ALERT_HOUR_UTC, minute=ALERT_MINUTE, tzinfo=timezone.utc)
     job_queue.run_daily(daily_alert, time=alert_time, name="daily_dashboard")
     logger.info(f"Daily alert scheduled at {alert_time} UTC (07:00 KST)")
+
+    # Lighter 포지션: AEST 08:00~23:00 매시간 (UTC 22:00~13:00)
+    for aest_h in range(8, 24):
+        utc_h = (aest_h - 10) % 24
+        job_queue.run_daily(
+            lighter_scheduled,
+            time=time(hour=utc_h, minute=0, tzinfo=timezone.utc),
+            name=f"lighter_{aest_h:02d}aest",
+        )
+    logger.info("Lighter 스케줄 등록: AEST 08:00~23:00 매시간 (16회/일)")
 
     logger.info("Bot started. Polling...")
     app.run_polling(drop_pending_updates=True)
