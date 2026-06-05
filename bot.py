@@ -15,6 +15,7 @@ from formatter import build_dashboard
 from guide import get_guide
 from top_signal import fetch_top_signals, format_top_signal
 from collapse_signal import fetch_collapse_signals, format_collapse_signal
+from lighter_status import fetch_lighter_status
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         "  /check    - \uac70\uc2dc\uacbd\uc81c \ub300\uc2dc\ubcf4\ub4dc\n"
         "  /signal   - BTC \uc0ac\uc774\ud074 \ud0d1 \uc2dc\uadf8\ub110\n"
         "  /collapse - AI \ubc84\ube14 \ubd95\uad34 3\uc2dc\uadf8\ub110 (KB \uc774\uc740\ud0dd)\n"
+        "  /l        - \u26a1 Lighter \ud3ec\uc9c0\uc158 \ud604\ud669\n"
         "  /guide    - \uc9c0\ud45c \ud574\uc11d \uac00\uc774\ub4dc\n"
         "  /stop     - \uc54c\ub9bc \uc911\ub2e8"
     )
@@ -134,6 +136,16 @@ async def cmd_collapse(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(f"❌ 붕괴 시그널 수집 실패: {e}")
 
 
+async def cmd_lighter(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text("⏳ Lighter 포지션 조회 중...")
+    try:
+        msg = await fetch_lighter_status()
+        await update.message.reply_text(msg)
+    except Exception as e:
+        logger.exception("lighter status failed")
+        await update.message.reply_text(f"❌ Lighter 조회 실패: {e}")
+
+
 async def cmd_guide(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     key = ctx.args[0] if ctx.args else None
     msg = get_guide(key)
@@ -192,6 +204,7 @@ def run_bot() -> None:
     app.add_handler(CommandHandler("collapse", cmd_collapse))
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("guide", cmd_guide))
+    app.add_handler(CommandHandler("l", cmd_lighter))
 
     job_queue = app.job_queue
     alert_time = time(hour=ALERT_HOUR_UTC, minute=ALERT_MINUTE, tzinfo=timezone.utc)
