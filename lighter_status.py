@@ -158,6 +158,16 @@ def _fmt_price(v: float) -> str:
     return f"${v:,.2f}"
 
 
+def _fmt_compact(v: float, is_diff: bool = False) -> str:
+    sign = "+" if is_diff and v >= 0 else ""
+    abs_v = abs(v)
+    if abs_v >= 1000:
+        return f"{sign}${v/1000:,.1f}k"
+    if abs_v >= 100:
+        return f"{sign}${v:,.0f}"
+    return f"{sign}${v:,.2f}"
+
+
 def _format_message(account: dict, positions: list[dict], funding_rates: dict[int, float]) -> str:
     now = datetime.now(AEST).strftime("%m/%d %H:%M")
     balance = float(account.get("available_balance", "0"))
@@ -178,11 +188,11 @@ def _format_message(account: dict, positions: list[dict], funding_rates: dict[in
             lines.append("")
             lines.append(
                 f"{'📈' if d == 'L' else '📉'} {p['name']} {d}{p['leverage']}x{order_tag}"
-                f" | 마진 {_fmt_price(p['margin'])}"
+                f" (마진 {_fmt_compact(p['margin'])})"
             )
             lines.append(
                 f"{_fmt_price(p['entry'])}→{_fmt_price(p['current'])}"
-                f" | {p['size']}주 {_fmt_price(p['value'])}"
+                f" ({p['size']:.2f}주, {_fmt_compact(p['value'])})"
             )
             lines.append(
                 f"{pnl_e} {p['upnl']:+,.1f} ({p['pnl_pct']:+.1f}%)"
@@ -192,27 +202,27 @@ def _format_message(account: dict, positions: list[dict], funding_rates: dict[in
             # 펀딩피 라인
             rate = funding_rates.get(p["market_id"])
             if rate is not None:
-                # Long + rate>0 → 지불(음수 효과), Short + rate>0 → 수취(양수 효과)
                 direction = -1 if p["side"] == "Long" else 1
                 levered_apr_pct = rate * FUNDING_PERIODS_PER_YEAR * p["leverage"] * direction * 100
                 apr_sign = "+" if levered_apr_pct >= 0 else ""
                 apr_icon = "🟢" if levered_apr_pct >= 0 else "🔴"
                 cumulative = p["funding"]
-                cum_str = f"+${cumulative:.1f}" if cumulative >= 0 else f"-${abs(cumulative):.1f}"
+                cum_str = _fmt_compact(cumulative, is_diff=True)
                 lines.append(
                     f"💸 누계 {cum_str} "
-                    f"| {apr_icon}{apr_sign}{levered_apr_pct:.1f}%APR "
-                    f"| ⏰{next_fund_label}"
+                    f"({apr_icon}{apr_sign}{levered_apr_pct:.0f}%APR) "
+                    f"⏰{next_fund_label}"
                 )
             else:
                 f_val = p["funding"]
-                cum_str = f"+${f_val:.1f}" if f_val >= 0 else f"-${abs(f_val):.1f}"
+                cum_str = _fmt_compact(f_val, is_diff=True)
                 lines.append(f"💸 누계 {cum_str} | ⏰{next_fund_label}")
 
     lines.append("─────────────────")
     pnl_e = "🟢" if total_upnl >= 0 else "🔴"
-    lines.append(f"{pnl_e} PnL ${total_upnl:+,.1f} | 마진 ${total_margin:,.0f}")
-    lines.append(f"💰 가용 ${balance:,.0f} | 총 ${total_value:,.0f}")
+    total_upnl_str = _fmt_compact(total_upnl, is_diff=True)
+    lines.append(f"{pnl_e} PnL {total_upnl_str} | 마진 {_fmt_compact(total_margin)}")
+    lines.append(f"💰 가용 {_fmt_compact(balance)} | 총 {_fmt_compact(total_value)}")
 
     pool_details = account.get("_pool_details", [])
     if pool_details:
@@ -220,17 +230,20 @@ def _format_message(account: dict, positions: list[dict], funding_rates: dict[in
         total_equity = sum(p["equity"] for p in pool_details)
         total_lp_pnl = sum(p["lp_pnl"] for p in pool_details)
         lp_e = "🟢" if total_lp_pnl >= 0 else "🔴"
-        lines.append(f"🏦 LP ${total_equity:,.0f} ({lp_e}${total_lp_pnl:+,.0f})")
+        total_lp_pnl_str = _fmt_compact(total_lp_pnl, is_diff=True)
+        lines.append(f"🏦 LP {_fmt_compact(total_equity)} ({lp_e}{total_lp_pnl_str})")
         for pd in pool_details:
             apy_str = f" {pd['apy']:+.1f}%" if pd["apy"] is not None else ""
-            pnl_str = f" ({pd['lp_pnl']:+,.0f})" if pd["lp_pnl"] != 0 else ""
+            pnl_val = pd["lp_pnl"]
+            pnl_str = f" ({_fmt_compact(pnl_val, is_diff=True)})" if pnl_val != 0 else ""
             name = (
                 pd["name"]
                 .replace("Lighter Liquidity Provider (LLP)", "LLP")
                 .replace("Edge & Hedge (L/S Factors)", "Edge&Hedge")
+                .replace("$LIT Staking", "LIT Staking")
             )
             lit_tag = pd.get("lit_tag", "")
-            lines.append(f"  {name} ${pd['equity']:,.0f}{pnl_str}{apy_str}{lit_tag}")
+            lines.append(f"  {name} {_fmt_compact(pd['equity'])}{pnl_str}{apy_str}{lit_tag}")
 
     return "\n".join(lines)
 
