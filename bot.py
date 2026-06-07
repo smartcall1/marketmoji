@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from datetime import time, timezone, timedelta
 
-from telegram import Update
+from telegram import Update, BotCommand
 from telegram.ext import (
     Application, CommandHandler, ContextTypes, filters,
 )
@@ -184,8 +184,20 @@ async def daily_alert(ctx: ContextTypes.DEFAULT_TYPE) -> None:
             logger.warning(f"Failed to send to {chat_id}")
 
 
+async def post_init(application: Application) -> None:
+    await application.bot.set_my_commands([
+        BotCommand("start", "봇 시작 및 도움말"),
+        BotCommand("status", "전체 시장 데이터 일괄 조회"),
+        BotCommand("check", "거시경제 대시보드"),
+        BotCommand("signal", "BTC 사이클 탑 시그널"),
+        BotCommand("collapse", "AI 버블 붕괴 시그널"),
+        BotCommand("guide", "지표 해석 가이드"),
+        BotCommand("stop", "알림 중단")
+    ])
+
+
 def run_bot() -> None:
-    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).post_init(post_init).build()
 
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("stop", cmd_stop))
