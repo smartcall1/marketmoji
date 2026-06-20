@@ -111,13 +111,14 @@ def _classify(value: float | None, history: list[float] | None, sig: dict) -> tu
     return state, trend, emoji
 
 
-TREND_LABEL = {
-    "TRENDING": "🚨 진짜 점화 (계속 임계값 위)",
-    "SPIKE": "🟥 일시 돌파 (한 번 찔러봄)",
-    "RISING": "📈 임박 + 오르는 중",
-    "FLAT": "🟡 임박 (횡보)",
-    "STABLE": "✓ 안전",
-    "—": "데이터 없음",
+STATE_TREND_LABEL = {
+    ("TRIGGER", "TRENDING"): "🚨 진짜 점화 (계속 임계값 위)",
+    ("SPIKED", "SPIKE"): "🟥 일시 돌파 (한 번 찔러봄)",
+    ("WARN", "RISING"): "📈 임박 + 오르는 중",
+    ("WARN", "FLAT"): "🟡 임박 (횡보)",
+    ("WATCH", "RISING"): "🔎 추적 중 + 오르는 중 (임박 전)",
+    ("SAFE", "STABLE"): "✓ 안전",
+    ("DATA", "—"): "데이터 없음",
 }
 
 
@@ -193,7 +194,7 @@ async def fetch_collapse_signals() -> dict:
             "history": hist,
             "state": state,
             "trend": trend,
-            "trend_label": TREND_LABEL.get(trend, trend),
+            "trend_label": STATE_TREND_LABEL.get((state, trend), f"{state}/{trend}"),
             "emoji": emoji,
         })
 
@@ -257,7 +258,7 @@ def _mini_sparkline(values: list[float] | None, n: int = 8) -> str:
 
 def format_collapse_signal(data: dict) -> str:
     lines = []
-    lines.append(f"💥 붕괴 시그널 — KB 이은택 ({data['timestamp']})")
+    lines.append(f"💥 붕괴 시그널 ({data['timestamp']})")
     risk_ko = RISK_LABEL_KO.get(data["risk_level"], f"{data['risk_emoji']}{data['risk_level']}")
     lines.append(
         f"{risk_ko} · 진짜점화 {data['triggered']}/일시 {data['spiked']}/임박 {data['warned']}"
